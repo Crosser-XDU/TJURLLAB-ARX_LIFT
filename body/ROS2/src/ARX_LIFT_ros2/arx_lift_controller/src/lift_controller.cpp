@@ -27,14 +27,16 @@ int main(int argc, char **argv) {
   control_loop = std::make_shared<LiftHeadControlLoop>("can5", static_cast<LiftHeadControlLoop::RobotType>(robot_type));
   int running_state = 2;
   double lift_height = 0;
+  bool collect = false;
   auto pub = node->create_publisher<arm_control::msg::PosCmd>("/body_information", 1);
   auto imu_pub = node->create_publisher<sensor_msgs::msg::Imu>("/arx_imu",1);
   auto sub = node->create_subscription<arm_control::msg::PosCmd>("/ARX_VR_L", 1,
                                                                  [&](const arm_control::msg::PosCmd &msg) {
-                                                                   control_loop->setHeight(msg.height / 41.54);
+                                                                   collect = true;
+                                                                   control_loop->setHeight(msg.height);
                                                                    control_loop->setWaistPos(msg.temp_float_data[0]);
-                                                                  //  control_loop->setHeadYaw(msg.head_yaw);
-                                                                  //  control_loop->setHeadPitch(-msg.head_pit);
+                                                                   control_loop->setHeadYaw(msg.head_yaw);
+                                                                   control_loop->setHeadPitch(-msg.head_pit);
                                                                    if (robot_type == 0)
                                                                      control_loop->setChassisCmd(msg.chx / 2.5,
                                                                                                  -msg.chy / 2.5,
@@ -47,6 +49,18 @@ int main(int argc, char **argv) {
                                                                                                  msg.mode1);
 
                                                                  });
+  rclcpp::Time last_cb_time = rclcpp::Clock().now();
+  auto body_control_sub = node->create_subscription<arm_control::msg::PosCmd>("/body_control",1,[&](const arm_control::msg::PosCmd &msg){
+    collect = false;
+    last_cb_time = rclcpp::Clock().now();
+    control_loop->setHeight(msg.height);
+    control_loop->setWaistPos(msg.temp_float_data[0]);
+    control_loop->setHeadYaw(msg.head_yaw);
+    control_loop->setHeadPitch(-msg.head_pit);
+    control_loop->setWheelVel(msg.temp_float_data[1], msg.temp_float_data[2],
+                             msg.temp_float_data[3], msg.temp_float_data[4]);
+    control_loop->setChassisCmd(0, 0, 0, msg.mode1);
+  });
   rclcpp::Time last_callback_time = rclcpp::Clock().now();
   auto joy_sub = node->create_subscription<sensor_msgs::msg::Joy>("/joy", 1, [&](const sensor_msgs::msg::Joy &msg) {
     double duration = (rclcpp::Clock().now() - last_callback_time).seconds();
@@ -70,15 +84,19 @@ int main(int argc, char **argv) {
   rclcpp::Rate loop_rate(400);
   while (rclcpp::ok()) {
     control_loop->loop();
-
-    control_loop->setHeadYaw(0);
-    control_loop->setHeadPitch(0.3);
-
+    if ((rclcpp::Clock().now() - last_cb_time).seconds() > 0.3 && !collect) {
+      control_loop->setChassisCmd(0, 0, 0, 2);
+      control_loop->setWheelVel(0, 0, 0, 0);
+    }
     arm_control::msg::PosCmd msg;
     msg.head_yaw = control_loop->getHeadYaw();
     msg.head_pit = control_loop->getHeadPitch();
     msg.height = control_loop->getHeight();
     msg.temp_float_data[0] = control_loop->getWaistPos();
+    double wheel_vel[4];
+    control_loop->getWheelVel(wheel_vel);
+    for(int i = 0;i < 4; i++)
+      msg.temp_float_data[i + 1] = wheel_vel[i];
     pub->publish(msg);
     sensor_msgs::msg::Imu imu_msg;
     double orientation[3],angular_vel[3],accel[3];

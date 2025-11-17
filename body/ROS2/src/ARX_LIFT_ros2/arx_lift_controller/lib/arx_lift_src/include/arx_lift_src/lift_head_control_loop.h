@@ -32,7 +32,7 @@ class LiftHeadControlLoop {
   LiftHeadControlLoop(const char *bus_name, RobotType robot_type);
   ~LiftHeadControlLoop();
   void setRobotType(RobotType robot_type);
-  void setHeight(double height) { lift_motor_pos_des_ = height * 41.54; }
+  void setHeight(double height);
   void setWaistPos(double pos);
   void setHeadYaw(double yaw_des);
   void setHeadPitch(double pitch_des);
