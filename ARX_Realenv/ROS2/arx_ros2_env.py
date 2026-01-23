@@ -266,8 +266,6 @@ class ARXRobotEnv():
         print(f"obs状态键: {state_keys}, obs图像键: {img_keys}")
         return obs
 
-    def _apply_multi_aciton(self,ac)
-
     def _apply_action(self, action: Dict[str, np.ndarray]) -> Tuple[bool, str | None]:
         """
         apply to the robot single step control command.
@@ -370,7 +368,6 @@ class ARXRobotEnv():
         if not success:
             return (False, f"left: {lerror_message}, right: {rerror_message}")
         return (True, None)
-
 
 def main():
     arx = ARXRobotEnv(duration_per_step=1.0/20.0,  # 就是插值里一步的时间，20Hz也就是0.05s
