@@ -3,3 +3,7 @@
 **.catkin_workspace
 **install
 **log
+"**/.vscode/**",
+"**/.git/**",
+"**/.DS_Store",
+"**/__pycache__"
