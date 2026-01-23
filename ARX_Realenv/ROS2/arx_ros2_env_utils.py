@@ -191,7 +191,7 @@ def start_robot_io(camera_type: Literal["color", "depth", "all"] = "all", camera
 
 
 def success_check(side: str, target: np.ndarray, status_all: Dict[str, Optional[RobotStatus]],
-                  threshold_xyz: float = 1.0, threshold_rpy: float = 1.5) -> tuple[bool, str | None]:
+                  threshold_xyz: float = 0.01, threshold_rpy: float = 0.005) -> tuple[bool, str | None]:
     current_status = status_all.get(
         side) if isinstance(status_all, dict) else None
     if current_status is None:

@@ -13,23 +13,6 @@ from arx5_arm_msg.msg._robot_status import RobotStatus  # 状态消息
 from arm_control.msg._pos_cmd import PosCmd  # 底盘控制命令
 
 
-WORKSPACE = Path(__file__).resolve().parent
-CONTROL_DIR = Path(__file__).resolve().parents[3] / "Control"
-
-
-def open_terminal(title: str, cmd: str, use_sudo: bool = False, cwd: Path | None = None):
-    """Launch a gnome-terminal tab/window running the given command."""
-    base_path = cwd if cwd is not None else WORKSPACE
-    cd_workspace = f"cd {shlex.quote(str(base_path))}"
-    full_cmd = f"{cd_workspace}; {cmd}; exec bash"
-
-    base = ["gnome-terminal", "-t", title, "-x"]
-    if use_sudo:
-        base.append("sudo")
-    base += ["bash", "-c", full_cmd]
-    subprocess.Popen(base)
-
-
 class ARXRobotEnv():
     """
     Concrete implementation of BasetEnv for ARX robot.
@@ -200,7 +183,6 @@ class ARXRobotEnv():
         if not success:
             print(f"回初始位失败: {error_message},强行切模式回 home")
             self._set_special_mode(1)  # 回 home 模式
-            time.sleep(5.0)  # 等待模式切换完成
             return (False, f"回初始位失败: {error_message}")
         else:
             print(f"左右臂回初始位成功")
@@ -283,6 +265,8 @@ class ARXRobotEnv():
         img_keys = list(camera_all.keys()) if camera_all else []
         print(f"obs状态键: {state_keys}, obs图像键: {img_keys}")
         return obs
+
+    def _apply_multi_aciton(self,ac)
 
     def _apply_action(self, action: Dict[str, np.ndarray]) -> Tuple[bool, str | None]:
         """
@@ -368,7 +352,7 @@ class ARXRobotEnv():
         target_r = rsequence[-1] if rsequence else None
         success = True
         lerror_message = rerror_message = None
-        for _ in range(20):  # 最多等待约1秒（20*0.05）
+        for _ in range(10):  # 最多等待约0.1秒（10*0.01）
             if target_l is not None and pose_changed.get("left", False):
                 lsuccess, lerror_message = self._success_check(
                     "left", target_l)
@@ -382,7 +366,7 @@ class ARXRobotEnv():
             success = bool(lsuccess) and bool(rsuccess)
             if success:
                 break
-            time.sleep(0.05)
+            time.sleep(0.01)
         if not success:
             return (False, f"left: {lerror_message}, right: {rerror_message}")
         return (True, None)
