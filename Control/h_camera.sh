@@ -2,7 +2,7 @@ workspace=$(pwd)
 source ~/.bashrc
 
 # 中间相机拉起
-gnome-terminal -t "h_camera" -x  bash -c "cd ${workspace}; cd .. ; cd realsense; \
+gnome-terminal -t "h_camera" -x  bash -c "cd ${workspace}; cd ../.. ; cd realsense; \
   source install/setup.bash && ros2 launch realsense2_camera rs_launch.py\
   align_depth.enable:=true \
   pointcloud.enable:=true\
