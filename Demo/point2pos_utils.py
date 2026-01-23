@@ -13,9 +13,10 @@ from typing import Iterable, Tuple
 
 import numpy as np
 
-WORKSPACE = Path(__file__).resolve().parent
-DEFAULT_INTRINSICS = WORKSPACE / "instrinsics_right4camerah.json"
-DEFAULT_EXTRINSICS = WORKSPACE / "final_extrinsics_cam_h_right.json"
+WORKSPACE = Path(__file__).resolve().parent()
+DEFAULT_INTRINSICS = WORKSPACE / "ARX_Realenv/Tools/instrinsics_right4camerah.json"
+DEFAULT_EXTRINSICS = WORKSPACE / \
+    "ARX_Realenv/Tools/final_extrinsics_cam_h_right.json"
 
 
 def _depth_to_meters(raw_depth: float) -> float:

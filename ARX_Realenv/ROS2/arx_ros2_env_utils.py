@@ -10,6 +10,7 @@ from rclpy.executors import SingleThreadedExecutor
 from rclpy.node import Node
 from sensor_msgs.msg import Image
 
+from arm_control.msg._pos_cmd import PosCmd
 from arx5_arm_msg.msg._robot_cmd import RobotCmd
 from arx5_arm_msg.msg._robot_status import RobotStatus
 
@@ -22,20 +23,26 @@ class RobotIO(Node):
     def __init__(self, camera_type: Literal["color", "depth", "all"] = "all", camera_view: Iterable[str] = ("camera_l", "camera_h")):
         super().__init__('robot_io')
         self.bridge = CvBridge() if CvBridge is not None else None
-        # 左右臂命令发布
+
         self.cmd_pub_l = self.create_publisher(RobotCmd, 'arm_cmd_l', 5)
         self.cmd_pub_r = self.create_publisher(RobotCmd, 'arm_cmd_r', 5)
+        self.cmd_pub_base = self.create_publisher(PosCmd, 'ARX_VR_L', 5)
+
+        self.latest_height = 0.0
         self.latest_status: Dict[str, Optional[RobotStatus]] = {
             "left": None, "right": None}
-        # 近似与相机帧同步的状态快照
+        self.latest_base: Optional[PosCmd] = None
+
         self.status_snapshot: Optional[Dict[str, Optional[RobotStatus]]] = None
         self.status_lock = threading.Lock()
-        # 左右臂状态订阅
+
         self.create_subscription(
             RobotStatus, 'arm_status_l', lambda msg: self._on_status('left', msg), 5)
         self.create_subscription(
             RobotStatus, 'arm_status_r', lambda msg: self._on_status('right', msg), 5)
-        # 相机订阅（近似同步多路）
+        self.sta_cmd_sub = self.create_subscription(
+            PosCmd, 'body_information', self._on_base_status, 1)
+
         self.camera_type = camera_type  # color/depth/all
         self.camera_view = list(camera_view) if camera_view else []
         self.cam_lock = threading.Lock()
@@ -48,7 +55,7 @@ class RobotIO(Node):
 
         subs: list[Subscriber] = []
         labels: list[str] = []
-        # 这里订阅的深度图片的topic是对齐彩色像素的
+
         types = [
             "color", "aligned_depth_to_color"] if camera_type == "all" else [camera_type]
         for cam in self.camera_view:
@@ -65,37 +72,68 @@ class RobotIO(Node):
             self.sync = ApproximateTimeSynchronizer(
                 subs, queue_size=5, slop=0.02)
             self.sync.registerCallback(self._on_images_status)
-            self.get_logger().info(f"订阅相机话题: {self.subscribed_topics}")
+            self.get_logger().info(
+                f"Subscribed camera topics: {self.subscribed_topics}")
         else:
-            self.get_logger().warn("未配置相机订阅，camera_view 为空。")
+            self.get_logger().warn("No camera subscriptions configured.")
         self.get_logger().info(
-            f"初始化 camera_view={self.camera_view}, types={types}")
+            f"Init camera_view={self.camera_view}, types={types}")
 
     def _on_status(self, side: str, msg: RobotStatus):
         with self.status_lock:
             self.latest_status[side] = msg
 
-    def _on_images_status(self, *msgs):
-        # 先记录状态快照，再更新相机帧，尽量对齐时间
-        # 先通过最新状态拿到快照，再更新图像
+    def _on_base_status(self, msg: PosCmd):
         with self.status_lock:
-            self.status_snapshot = dict(self.latest_status)
+            self.latest_base = msg
+            self.latest_height = float(msg.height)
+
+    def _on_images_status(self, *msgs):
+
+        with self.status_lock:
+            snap = dict(self.latest_status)
+            snap["base"] = self.latest_base
+            self.status_snapshot = snap
         with self.cam_lock:
             for label, msg in zip(self.labels, msgs):
                 self.latest_images[label] = msg
+
+    def send_base_msg(self, cmd: PosCmd):
+        """Send base command."""
+        if not rclpy.ok():
+            try:
+                self.get_logger().warn("ROS not ready, base command not sent")
+            except Exception:
+                pass
+            return False
+        sub_count = self.cmd_pub_base.get_subscription_count()
+        if sub_count == 0:
+            try:
+                self.get_logger().warn(f"No base subscribers, base command not sent")
+            except Exception:
+                pass
+            return False
+        # track latest height even when publishing commands
+        try:
+            self.latest_height = float(cmd.height)
+        except Exception:
+            pass
+        self.cmd_pub_base.publish(cmd)
+        return True
 
     def send_control_msg(self, side: str, cmd: RobotCmd):
         pub = self.cmd_pub_l if side == "left" else self.cmd_pub_r
         if not rclpy.ok():
             try:
-                self.get_logger().warn("ROS 未就绪，指令未发送")
+                self.get_logger().warn("ROS not ready, arm command not sent")
             except Exception:
                 pass
             return False
         sub_count = pub.get_subscription_count()
         if sub_count == 0:
             try:
-                self.get_logger().warn(f"{side} 没有订阅者，指令未发送")
+                self.get_logger().warn(
+                    f"{side} no subscribers, arm command not sent")
             except Exception:
                 pass
             return False
@@ -104,13 +142,15 @@ class RobotIO(Node):
 
     def get_robot_status(self):
         with self.status_lock:
-            return self.latest_status
+            status = dict(self.latest_status)
+            status["base"] = self.latest_base
+            return status
 
     def get_camera(self, save_dir: Optional[str] = None, target_size: Optional[tuple[int, int]] = None,
                    return_status: bool = False):
-        """返回最新近似同步的相机帧，可选返回拍摄时的状态快照。"""
+        """Return latest approx-synced camera frames, optional status snapshot."""
         if self.bridge is None:
-            print("CvBridge 未初始化，无法获取图像。")
+            print("CvBridge not initialized, cannot decode images.")
             return (dict(), self.status_snapshot) if return_status else dict()
         frames = dict()
         with self.cam_lock:
@@ -120,7 +160,7 @@ class RobotIO(Node):
                 img = self.bridge.imgmsg_to_cv2(
                     msg, desired_encoding='passthrough')
             except Exception as exc:  # pragma: no cover
-                self.get_logger().warn(f"{key} 解码失败: {exc}")
+                self.get_logger().warn(f"{key} decode failed: {exc}")
                 continue
             if target_size:
                 img = cv2.resize(img, target_size)
@@ -138,6 +178,16 @@ class RobotIO(Node):
                     self.status_snapshot) if self.status_snapshot is not None else None
             return frames, snap
         return frames
+
+    def get_camera_with_status(self, save_dir: Optional[str] = None, target_size: Optional[tuple[int, int]] = None):
+        """Get camera frames with status snapshot; fallback to latest status including base."""
+        frames, snap = self.get_camera(
+            save_dir=save_dir, target_size=target_size, return_status=True)
+        if snap is None:
+            with self.status_lock:
+                snap = dict(self.latest_status)
+                snap["base"] = self.latest_base
+        return frames, snap
 
     def get_camera_keys(self):
         with self.cam_lock:
@@ -169,7 +219,7 @@ class RobotIO(Node):
                                 [cv2.IMWRITE_JPEG_QUALITY, 90])
             except Exception as exc:  # pragma: no cover
                 try:
-                    self.get_logger().warn(f"保存 {key} 失败: {exc}")
+                    self.get_logger().warn(f"save {key} failed: {exc}")
                 except Exception:
                     pass
             finally:
@@ -190,44 +240,115 @@ def start_robot_io(camera_type: Literal["color", "depth", "all"] = "all", camera
     return node, executor, t
 
 
-def success_check(side: str, target: np.ndarray, status_all: Dict[str, Optional[RobotStatus]],
-                  threshold_xyz: float = 0.01, threshold_rpy: float = 0.005) -> tuple[bool, str | None]:
-    current_status = status_all.get(
-        side) if isinstance(status_all, dict) else None
-    if current_status is None:
-        return False, f"{side} 无状态数据"
+def build_observation(camera_all: Dict[str, Image] | Dict, status_all: Dict[str, object] | None) -> Dict[str, np.ndarray]:
+    """Pack status and camera into a flat observation dict."""
+    obs: Dict[str, np.ndarray | Dict] = {
+        "camera": camera_all or {}, "status": status_all or {}}
+    if isinstance(status_all, dict):
+        lstatus = status_all.get("left")
+        rstatus = status_all.get("right")
+        if lstatus is not None and rstatus is not None:
+            obs["left_end_pos"] = np.array(lstatus.end_pos, dtype=np.float32)
+            obs["left_joint_pos"] = np.array(
+                lstatus.joint_pos, dtype=np.float32)
+            obs["left_joint_cur"] = np.array(
+                lstatus.joint_cur, dtype=np.float32)
+            obs["left_joint_vel"] = np.array(
+                lstatus.joint_vel, dtype=np.float32)
+            obs["right_end_pos"] = np.array(rstatus.end_pos, dtype=np.float32)
+            obs["right_joint_pos"] = np.array(
+                rstatus.joint_pos, dtype=np.float32)
+            obs["right_joint_cur"] = np.array(
+                rstatus.joint_cur, dtype=np.float32)
+            obs["right_joint_vel"] = np.array(
+                rstatus.joint_vel, dtype=np.float32)
+        base_status = status_all.get("base")
+        if base_status is not None:
+            obs["base_height"] = np.array(
+                [base_status.height], dtype=np.float32)
+            obs["base_chassis_cmd"] = np.array(
+                [base_status.chx, base_status.chy, base_status.chz], dtype=np.float32)
+            obs["base_head"] = np.array(
+                [base_status.head_pit, base_status.head_yaw], dtype=np.float32)
+            obs["base_wheel_vel"] = np.array(
+                [base_status.vel_l, base_status.vel_r], dtype=np.float32)
+            obs["base_mode"] = np.array(
+                [base_status.mode1, base_status.mode2, base_status.time_count], dtype=np.int32)
+    # Attach camera frames as numpy arrays
+    for key, msg in (camera_all or {}).items():
+        if msg is None:
+            continue
+        try:
+            img = msg
+            if isinstance(msg, np.ndarray):
+                img_np = msg
+            else:
+                img_np = np.asarray(img)
+            if "color" in key:
+                img_np = np.asarray(img_np, dtype=np.uint8)
+            obs[key] = img_np
+        except Exception:
+            # Skip broken frame
+            continue
+    return obs
 
-    curr_end_xyz = current_status.end_pos[:3]
-    curr_end_rpy = current_status.end_pos[3:6]
 
-    diff_xyz = np.abs(curr_end_xyz - target[:3])
-    diff_rpy = np.abs(curr_end_rpy - target[3:6])
+def compute_interp_steps(curr_obs: Dict[str, np.ndarray],
+                         action: Dict[str, np.ndarray],
+                         max_v_xyz: float,
+                         max_v_rpy: float,
+                         duration_per_step: float,
+                         min_steps_per_action: int,
+                         min_steps_gripper: int) -> tuple[Dict[str, tuple[int, int]], Dict[str, bool]]:
+    """
+    Compute interpolation steps for each side.
 
-    reasons = []
-    axis_xyz = ["x", "y", "z"]
-    axis_rpy = ["roll", "pitch", "yaw"]
-    for idx, axis in enumerate(axis_xyz):
-        if diff_xyz[idx] > threshold_xyz:
-            reasons.append(f"{side} {axis}超阈值({diff_xyz[idx]:.4f})")
-    for idx, axis in enumerate(axis_rpy):
-        if diff_rpy[idx] > threshold_rpy:
-            reasons.append(f"{side} {axis}超阈值({diff_rpy[idx]:.4f})")
+    Returns:
+        steps_by_side: dict[side] -> (pose_steps, gripper_steps)
+        pose_changed: dict[side] -> bool indicating pose change (affects success check)
+    """
+    steps_by_side: Dict[str, tuple[int, int]] = {}
+    pose_changed: Dict[str, bool] = {}
+    for side in ("left", "right"):
+        target = action.get(side)
+        curr_end = curr_obs.get(f"{side}_end_pos")
+        curr_joint = curr_obs.get(f"{side}_joint_pos")
+        if target is None or curr_end is None or curr_joint is None:
+            continue
+        start = np.concatenate([np.array(curr_end, dtype=np.float32),
+                                [float(curr_joint[6])]])
+        target_arr = target if isinstance(
+            target, np.ndarray) else np.array(target, dtype=np.float32)
+        diff = np.abs(target_arr - start)
+        need_steps = [
+            int(np.ceil(diff[:3].max() / (max_v_xyz * duration_per_step))),
+            int(np.ceil(diff[3:6].max() / (max_v_rpy * duration_per_step))),
+        ]
+        pose_steps = max(min_steps_per_action, max(need_steps))
+        pose_changed[side] = bool(np.any(diff[:6] > 1e-6))
 
-    if not reasons:
-        return True, None
-    return False, "; ".join(reasons)
+        grip_steps = 0
+        delta_g = diff[6]
+        if delta_g > 0:
+            if delta_g <= 1e-3:
+                grip_steps = 1
+            else:
+                grip_steps = max(min_steps_gripper, max(1, pose_steps // 3))
+
+        steps_by_side[side] = (pose_steps, grip_steps)
+    return steps_by_side, pose_changed
 
 
 def interpolate_action(curr_obs: Dict[str, np.ndarray], action: Dict[str, np.ndarray],
                        steps: Dict[str, tuple[int, int]]) -> Dict[str, list[np.ndarray]]:
-    """插值生成左右臂的末端+夹爪序列。
+    """Interpolate end-effector+gripper sequences for both arms.
 
-    steps: 每侧一个 (pose_steps, gripper_steps)，二者独立，最终长度取二者最大；超出各自长度时保持最后一个值。
+    steps: per side (pose_steps, gripper_steps); length is per-side max; beyond length hold last value.
     """
     results: Dict[str, list[np.ndarray]] = {}
 
     def smoothstep5(n: int) -> np.ndarray:
-        """五次平滑插值 6t^5-15t^4+10t^3，起停更柔和。"""
+        """Quintic smoothstep 6t^5-15t^4+10t^3 for smooth start/stop."""
         if n <= 1:
             return np.array([1.0], dtype=np.float32)
         t = np.linspace(0.0, 1.0, n)
