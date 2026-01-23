@@ -5,7 +5,3 @@
 [submodule "ARX_all_in_one_readme"]
 	path = ARX_all_in_one_readme
 	url = https://github.com/ARXroboticsX/ARX_all_in_one_readme.git
-
-[submodule "R5"]
-	path = R5
-	url = https://github.com/ARXroboticsX/R5.git
