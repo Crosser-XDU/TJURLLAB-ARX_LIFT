@@ -1,4 +1,14 @@
+# 双臂py接口
 export LD_LIBRARY_PATH=$(pwd)/bimanual/api/arx_x5_src:$LD_LIBRARY_PATH
+export LD_LIBRARY_PATH=$(pwd)/bimanual/api:$LD_LIBRARY_PATH
 export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH
 
-source /TJURLLAB-ARX_LIFT/body/ROS2
+# 底盘接口
+
+
+# ros2工作区build
+colcon build --cmake-args -DPython3_EXECUTABLE=/usr/bin/python3
+
+# ros2工作区source
+source /home/arx/Arx_Lift/ARX_X5/ROS2/X5_ws/install/setup.bash
+source /home/arx/Arx_Lift/body/ROS2/install/setup.bash
