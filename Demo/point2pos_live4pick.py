@@ -185,7 +185,7 @@ def main():
                     if i % 2 == 0:
                         u, v = predict_point_from_rgb(
                             color,
-                            text_prompt=" a proper place to pick the red straw in the cup",
+                            text_prompt=" a proper place to grasp the red straw in the cup with a gripper",
                         )
                     else:
                         time.sleep(3)
@@ -196,7 +196,7 @@ def main():
                             continue
                         u, v = predict_point_from_rgb(
                             color,
-                            text_prompt="the center of lid of the cup",
+                            text_prompt="the opening of the cup ",
                         )
                     predicted_px = (int(round(u)), int(round(v)))
                     raw_depth = depth[predicted_px[1], predicted_px[0]]
