@@ -5,10 +5,16 @@ export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH
 
 # 底盘接口
 
+# demo虚拟环境
+source demo/bin/activate
 
 # ros2工作区build
 colcon build --cmake-args -DPython3_EXECUTABLE=/usr/bin/python3
 
 # ros2工作区source
-source /home/arx/Arx_Lift/ARX_X5/ROS2/X5_ws/install/setup.bash
 source /home/arx/Arx_Lift/body/ROS2/install/setup.bash
+
+# pick demo运行
+source /home/arx/Arx_Lift/body/ROS2/install/setup.bash
+source demo/bin/activate
+

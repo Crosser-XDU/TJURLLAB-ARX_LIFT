@@ -13,7 +13,7 @@ from typing import Iterable, Tuple
 
 import numpy as np
 
-WORKSPACE = Path(__file__).resolve().parent()
+WORKSPACE = Path(__file__).resolve().parent.parent
 DEFAULT_INTRINSICS = WORKSPACE / "ARX_Realenv/Tools/instrinsics_right4camerah.json"
 DEFAULT_EXTRINSICS = WORKSPACE / \
     "ARX_Realenv/Tools/final_extrinsics_cam_h_right.json"

@@ -125,6 +125,7 @@ class ARXRobotEnv():
             msg.height = curr
             self.node.send_base_msg(msg)
             time.sleep(0.03)
+        print(f"lift to height {height} done")
 
     def step_base(self, vx: float, vy: float, vz: float, duration: float):
         """Move base"""
@@ -229,8 +230,8 @@ class ARXRobotEnv():
     def _get_observation(self) -> Dict[str, np.ndarray]:
         """Fetch latest status/camera and pack into observation."""
         time.sleep(0.05)  # allow status/camera to refresh
-        camera_all, status_all = self.node.get_camera_with_status(
-            self.dir, self.img_size)
+        camera_all, status_all = self.node.get_camera(
+            save_dir=self.dir, target_size=self.img_size, return_status=True)
         obs = build_observation(camera_all, status_all)
         if not obs:
             try:
@@ -305,7 +306,12 @@ def main():
 
     time.sleep(1.5)
     obs = arx.reset()
-    print(obs.keys())
+    frame = obs.get("camera_h_color")
+    if frame is not None:
+        cv2.imshow("camera_h_color", frame)
+        cv2.waitKey(1)
+    else:
+        print("no camera_h_color in obs")
 
     arx.step_lift(10.0)
 

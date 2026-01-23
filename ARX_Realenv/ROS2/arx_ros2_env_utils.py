@@ -159,7 +159,8 @@ class RobotIO(Node):
             try:
                 img = self.bridge.imgmsg_to_cv2(
                     msg, desired_encoding='passthrough')
-                img = img[:, :, ::-1]
+                if "depth" not in key:
+                    img = img[:, :, ::-1]
             except Exception as exc:  # pragma: no cover
                 self.get_logger().warn(f"{key} decode failed: {exc}")
                 continue
@@ -175,20 +176,16 @@ class RobotIO(Node):
                 self.save_queue.put((save_dir, key, ts, img))
         if return_status:
             with self.status_lock:
-                snap = dict(
-                    self.status_snapshot) if self.status_snapshot is not None else None
+                # prefer snapshot if available; otherwise use latest
+                if self.status_snapshot is not None:
+                    snap = dict(self.status_snapshot)
+                else:
+                    snap = dict(self.latest_status)
+                # ensure base present
+                if "base" not in snap:
+                    snap["base"] = self.latest_base
             return frames, snap
         return frames
-
-    def get_camera_with_status(self, save_dir: Optional[str] = None, target_size: Optional[tuple[int, int]] = None):
-        """Get camera frames with status snapshot; fallback to latest status including base."""
-        frames, snap = self.get_camera(
-            save_dir=save_dir, target_size=target_size, return_status=True)
-        if snap is None:
-            with self.status_lock:
-                snap = dict(self.latest_status)
-                snap["base"] = self.latest_base
-        return frames, snap
 
     def get_camera_keys(self):
         with self.cam_lock:
@@ -207,11 +204,11 @@ class RobotIO(Node):
                     np.save(base + ".npy", img)
                     depth_float = img.astype(np.float32)
                     finite = depth_float[np.isfinite(depth_float)]
-                    if finite.size == 0:
-                        continue
+                    # if finite.size == 0:
+                    #     continue
                     vmax = np.percentile(finite, 99)
-                    if vmax <= 1e-6:
-                        continue
+                    # if vmax <= 1e-6:
+                    #     continue
                     vis = cv2.convertScaleAbs(depth_float, alpha=255.0 / vmax)
                     cv2.imwrite(base + "_vis.png", vis,
                                 [cv2.IMWRITE_PNG_COMPRESSION, 0])
@@ -267,14 +264,12 @@ def build_observation(camera_all: Dict[str, Image] | Dict, status_all: Dict[str,
         if base_status is not None:
             obs["base_height"] = np.array(
                 [base_status.height], dtype=np.float32)
-            obs["base_chassis_cmd"] = np.array(
-                [base_status.chx, base_status.chy, base_status.chz], dtype=np.float32)
-            obs["base_head"] = np.array(
-                [base_status.head_pit, base_status.head_yaw], dtype=np.float32)
-            obs["base_wheel_vel"] = np.array(
-                [base_status.vel_l, base_status.vel_r], dtype=np.float32)
-            obs["base_mode"] = np.array(
-                [base_status.mode1, base_status.mode2, base_status.time_count], dtype=np.int32)
+            obs["base_chx"] = np.array(
+                [base_status.chx], dtype=np.float32)
+            obs["base_chy"] = np.array(
+                [base_status.chy], dtype=np.float32)
+            obs["base_chz"] = np.array(
+                [base_status.chz], dtype=np.float32)
     # Attach camera frames as numpy arrays
     for key, msg in (camera_all or {}).items():
         if msg is None:
