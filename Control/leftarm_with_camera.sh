@@ -4,7 +4,7 @@ workspace=$(pwd)
 source ~/.bashrc
 
 # 左臂can拉起
-gnome-terminal -t "can1" -x sudo bash -c "cd ${workspace};cd .. ; cd ARX_CAN/arx_can; ./arx_can1.sh; exec bash;"
+gnome-terminal -t "can1" -x sudo bash -c "cd ${workspace};cd .. ; cd ARX_CAN/arx_can; sudo bash arx_can1.sh; exec bash;"
 
 sleep 1
 

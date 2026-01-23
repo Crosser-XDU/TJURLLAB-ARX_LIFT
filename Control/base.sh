@@ -4,7 +4,7 @@ workspace=$(pwd)
 source ~/.bashrc
 
 # CAN
-gnome-terminal -t "can5" -x sudo bash -c "cd ${workspace};cd ..  ; cd LIFT4try/ARX_CAN/arx_can; ./arx_can5.sh; exec bash;"
+gnome-terminal -t "can5" -x sudo bash -c "cd ${workspace};cd ..  ; cd LIFT4try/ARX_CAN/arx_can; sudo basharx_can5.sh; exec bash;"
 
 sleep 1
 
