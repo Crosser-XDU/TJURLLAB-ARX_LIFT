@@ -159,6 +159,7 @@ class RobotIO(Node):
             try:
                 img = self.bridge.imgmsg_to_cv2(
                     msg, desired_encoding='passthrough')
+                img = img[:, :, ::-1]
             except Exception as exc:  # pragma: no cover
                 self.get_logger().warn(f"{key} decode failed: {exc}")
                 continue
