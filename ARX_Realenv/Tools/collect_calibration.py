@@ -6,16 +6,16 @@
 """
 from __future__ import annotations
 
-import argparse
-import json
-from pathlib import Path
-from typing import Dict, Tuple
-
-import cv2
-import numpy as np
-
 import time
-from arx_env import ARXRobotEnv
+import numpy as np
+import cv2
+from typing import Dict, Tuple
+from pathlib import Path
+import json
+import argparse
+import sys
+sys.path.append("../ROS2")  # noqa
+from arx_ros2_env import ARXRobotEnv
 
 
 def rpy_to_matrix(roll: float, pitch: float, yaw: float) -> np.ndarray:
@@ -141,14 +141,14 @@ def main():
     )
 
     args = parser.parse_args()
-    target_size = tuple(args.resize) if args.resize else None
+    target_size = tuple(args.resize) if args.resize else (640, 480)
     args.out_dir.mkdir(parents=True, exist_ok=True)
 
     env = ARXRobotEnv(
         camera_type=args.camera_type,
         camera_view=tuple(args.camera_view),
         dir=None,
-        target_size=target_size,
+        img_size=target_size,
     )
     time.sleep(1.0)  # 等待 IO 稳定
     if not args.skip_home:

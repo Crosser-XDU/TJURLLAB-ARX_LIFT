@@ -207,12 +207,12 @@ def project_ref_point_to_image(
 def main():
     parser = argparse.ArgumentParser(description="眼在手外数据解析（仅输出可知的 R/T）")
     parser.add_argument(
-        "--data-dir", type=Path, default=Path("calibration_data"), help="采集数据目录"
+        "--data-dir", type=Path, default=Path("right_calibration_data"), help="采集数据目录"
     )
     parser.add_argument(
         "--intrinsics",
         type=Path,
-        default=Path("right4camerah.json"),
+        default=Path("instrinsics_camerah.json"),
         help="相机内参（json 或 xml），默认使用 right4camerah.json",
     )
     parser.add_argument(

@@ -21,7 +21,7 @@ sleep 1
 gnome-terminal -t "left&right" -x  bash -c "cd ${workspace}; cd .. ; cd ARX_X5/ROS2/X5_ws; source install/setup.bash && ros2 launch arx_x5_controller v2_double_arm.launch.py; exec bash;"
 
 # camera_h
-gnome-terminal -t "h_camera" -x  bash -c "cd ${workspace}; cd ../.. ; cd realsense; \
+gnome-terminal -t "h_camera" -x  bash -c "cd ${workspace}; cd .. ; cd realsense; \
   source install/setup.bash && ros2 launch realsense2_camera rs_launch.py\
   align_depth.enable:=true \
   pointcloud.enable:=true\
@@ -36,7 +36,7 @@ gnome-terminal -t "h_camera" -x  bash -c "cd ${workspace}; cd ../.. ; cd realsen
   rgb_camera.enable_auto_exposure:=true;exec bash;"
 
 # # camera_l
-# gnome-terminal -t "l_camera" -x  bash -c "cd ${workspace}; cd ../.. ; cd realsense; \
+# gnome-terminal -t "l_camera" -x  bash -c "cd ${workspace}; cd .. ; cd realsense; \
 #   source install/setup.bash && ros2 launch realsense2_camera rs_launch.py\
 #   align_depth.enable:=true \
 #   pointcloud.enable:=true\
@@ -45,12 +45,14 @@ gnome-terminal -t "h_camera" -x  bash -c "cd ${workspace}; cd ../.. ; cd realsen
 #   camera_name:=camera_l \
 #   camera_namespace:=camera_l_namespace \
 #   serial_no:=_409122272587 \
-#   depth_module.color_profile:=640x480x90 \
-#   depth_module.depth_profile:=640x480x90; exec bash;"
+#   depth_module.color_profile:=640x480x60 \
+#   depth_module.depth_profile:=640x480x60\
+#   depth_module.enable_auto_exposure:=true\
+#   rgb_camera.enable_auto_exposure:=true; exec bash;"
 
 
 # # camera_r
-# gnome-terminal -t "r_camera" -x  bash -c "cd ${workspace}; cd ../.. ; cd realsense; \
+# gnome-terminal -t "r_camera" -x  bash -c "cd ${workspace}; cd .. ; cd realsense; \
 #   source install/setup.bash && ros2 launch realsense2_camera rs_launch.py\
 #   align_depth.enable:=true \
 #   pointcloud.enable:=true\
@@ -59,5 +61,7 @@ gnome-terminal -t "h_camera" -x  bash -c "cd ${workspace}; cd ../.. ; cd realsen
 #   camera_name:=camera_r \
 #   camera_namespace:=camera_r_namespace \
 #   serial_no:=_409122272707 \
-#   depth_module.color_profile:=640x480x90 \
-#   depth_module.depth_profile:=640x480x90; exec bash;"
+#   depth_module.color_profile:=640x480x60 \
+#   depth_module.depth_profile:=640x480x60\
+#   depth_module.enable_auto_exposure:=true\
+#   rgb_camera.enable_auto_exposure:=true; exec bash;"

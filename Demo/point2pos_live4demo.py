@@ -33,7 +33,7 @@ from point2pos_utils import (
 from arx_pointing import predict_point_from_rgb
 
 import sys
-sys.path.append("../ARX_Realenv/ROS2/arx_ros2_env")  # noqa
+sys.path.append("../ARX_Realenv/ROS2")  # noqa
 
 from arx_ros2_env import ARXRobotEnv  # noqa
 
