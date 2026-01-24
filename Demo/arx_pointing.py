@@ -104,8 +104,7 @@ def _image_to_data_uri(image: np.ndarray, assume_bgr: bool = True) -> str:
 def predict_point_from_rgb(
     image: np.ndarray,
     text_prompt: str,
-    *,
-    all_prompt: str,
+    all_prompt: str = "",
     base_url: str = "http://172.28.102.11:22002/v1",
     model_name: str = "Embodied-R1.5-SFT-v1",
     api_key: str = "EMPTY",

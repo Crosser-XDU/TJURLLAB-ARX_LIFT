@@ -3,10 +3,10 @@ from typing import Dict, Optional
 
 CLOSE = 0.0
 OPEN = -3.4
-GRIPPER_OFFSET = 0.14
-CUP = -2.6
+GRIPPER_OFFSET = 0.15
+Gripper = -2.6
 Z_CUP = 0.06
-Z_STRAW = 0.1
+Z_STRAW = 0.2
 
 
 def make_pick_move_action(pt_ref: Optional[np.ndarray]) -> Dict[str, np.ndarray]:
@@ -71,7 +71,7 @@ def make_place_move_action(pt_ref: Optional[np.ndarray]) -> Dict[str, np.ndarray
     return {
         "left": np.array([0, 0, 0, 0, 0, 0, 0], dtype=np.float32),
         "right": np.array(
-            [base[0] - GRIPPER_OFFSET-0.03, base[1], base[2]+0.08, 0, 0, 0, CLOSE],
+            [base[0] - GRIPPER_OFFSET-0.04, base[1], base[2]+Z_STRAW, 0, 0, 0, CLOSE],
             dtype=np.float32,
         ),
     }
@@ -83,7 +83,7 @@ def make_place_robust_action(pt_ref: Optional[np.ndarray]) -> Dict[str, np.ndarr
     return {
         "left": np.array([0, 0, 0, 0, 0, 0, 0], dtype=np.float32),
         "right": np.array(
-            [base[0]-GRIPPER_OFFSET, base[1], base[2]+Z_STRAW, 0, 0, 0, CLOSE],
+            [base[0]-GRIPPER_OFFSET-0.06, base[1], base[2]+Z_STRAW, 0, 0, 0, CLOSE],
             dtype=np.float32,
         ),
     }
@@ -95,7 +95,7 @@ def make_down_action(pt_ref: Optional[np.ndarray]) -> Dict[str, np.ndarray]:
     return {
         "left": np.array([0, 0, 0, 0, 0, 0, 0], dtype=np.float32),
         "right": np.array(
-            [base[0]-GRIPPER_OFFSET, base[1], base[2]+Z_STRAW-0.05, 0, 0, 0, CLOSE],
+            [base[0]-GRIPPER_OFFSET-0.06, base[1], base[2]+Z_STRAW-0.12, 0, 0, 0, CLOSE],
             dtype=np.float32,
         ),
     }
@@ -106,7 +106,7 @@ def make_open_action(pt_ref: Optional[np.ndarray]) -> Dict[str, np.ndarray]:
     base = np.zeros(3, dtype=np.float32) if pt_ref is None else pt_ref
     return {
         "left": np.array([0, 0, 0, 0, 0, 0, 0], dtype=np.float32),
-        "right": np.array([base[0]-GRIPPER_OFFSET, base[1], base[2]+Z_CUP-0.05, 0, 0, 0, OPEN], dtype=np.float32)}
+        "right": np.array([base[0]-GRIPPER_OFFSET-0.06, base[1], base[2]+Z_STRAW-0.12, 0, 0, 0, OPEN], dtype=np.float32)}
 
 
 def make_place_stop_action(pt_ref: Optional[np.ndarray]) -> Dict[str, np.ndarray]:
@@ -115,13 +115,13 @@ def make_place_stop_action(pt_ref: Optional[np.ndarray]) -> Dict[str, np.ndarray
     return {
         "left": np.array([0, 0, 0, 0, 0, 0, 0], dtype=np.float32),
         "right": np.array(
-            [base[0]-GRIPPER_OFFSET, base[1], base[2]+Z_CUP, 0, 0, 0, OPEN],
+            [base[0]-GRIPPER_OFFSET-0.06, base[1], base[2]+Z_STRAW, 0, 0, 0, OPEN],
             dtype=np.float32,
         ),
     }
 
 
-def make_release_acqion(pt_ref: Optional[np.ndarray]) -> Dict[str, np.ndarray]:
+def make_release_action(pt_ref: Optional[np.ndarray]) -> Dict[str, np.ndarray]:
     """夹爪home位置张开放置"""
     base = np.zeros(3, dtype=np.float32) if pt_ref is None else pt_ref
     return {

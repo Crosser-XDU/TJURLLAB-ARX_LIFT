@@ -61,7 +61,7 @@ def save_sample(
     color_key, img = color_candidates[0]
     # 观测中是 RGB，保存时确保仍为 RGB（cv2 默认按 BGR 写入）
     if img.ndim == 3 and img.shape[2] == 3:
-        img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
+        img = img[:, :, ::-1]  # RGB to BGR
     img_path = sample_dir / "camera.png"
     cv2.imwrite(str(img_path), img)
     meta["color_key"] = color_key

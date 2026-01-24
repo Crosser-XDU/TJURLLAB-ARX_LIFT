@@ -14,7 +14,7 @@ from typing import Iterable, Tuple
 import numpy as np
 
 WORKSPACE = Path(__file__).resolve().parent.parent
-DEFAULT_INTRINSICS = WORKSPACE / "ARX_Realenv/Tools/instrinsics_right4camerah.json"
+DEFAULT_INTRINSICS = WORKSPACE / "ARX_Realenv/Tools/instrinsics_camerah.json"
 DEFAULT_EXTRINSICS = WORKSPACE / \
     "ARX_Realenv/Tools/final_extrinsics_cam_h_right.json"
 
@@ -46,52 +46,6 @@ def _load_cam2ref(path: Path | str | None = None) -> np.ndarray:
     if T.shape != (4, 4):
         raise ValueError(f"外参矩阵形状异常: {T.shape}")
     return T
-
-
-def point2pos(
-    pixel: Tuple[float, float],
-    depth_image: np.ndarray,
-    current_end_pos: Iterable[float],
-    intrinsics_path: Path | str | None = None,
-    extrinsics_path: Path | str | None = None,
-) -> np.ndarray:
-    """
-    像素 + 深度 -> 基坐标系下的末端 6DoF（位置来自反投影，姿态沿用 current_end_pos 的 rpy）。
-
-    Args:
-        pixel: (u, v) 像素坐标。
-        depth_image: 与彩色对齐的深度图（单通道）。
-        current_end_pos: 末端当前 6 维姿态，用于保留 roll/pitch/yaw。
-        intrinsics_path: 可选内参路径，默认 instrics_right4camerah.json。
-        extrinsics_path: 可选外参路径，默认 final_extrinsics_cam_h_right.json。
-    Returns:
-        np.ndarray, shape (6,) -> [x, y, z, roll, pitch, yaw]（ref/基坐标系）。
-    """
-    if depth_image is None or depth_image.ndim != 2:
-        raise ValueError(
-            f"深度图必须为单通道，当前: {None if depth_image is None else depth_image.shape}")
-
-    u, v = int(round(pixel[0])), int(round(pixel[1]))
-    H, W = depth_image.shape
-    if not (0 <= u < W and 0 <= v < H):
-        raise ValueError(f"像素越界: {(u, v)} not in [0,{W})x[0,{H})")
-
-    z = _depth_to_meters(float(depth_image[v, u]))
-
-    K = _load_intrinsics(intrinsics_path)
-    fx, fy, cx, cy = K[0, 0], K[1, 1], K[0, 2], K[1, 2]
-    x_cam = (u - cx) * z / fx
-    y_cam = (v - cy) * z / fy
-    cam_point = np.array([x_cam, y_cam, z, 1.0], dtype=np.float64)
-
-    T_cam2ref = _load_cam2ref(extrinsics_path)
-    ref_point = T_cam2ref @ cam_point
-
-    curr = np.asarray(list(current_end_pos), dtype=np.float64).flatten()
-    if curr.shape[0] < 6:
-        raise ValueError(f"current_end_pos 维度不足: {curr.shape}")
-
-    return np.concatenate([ref_point[:3], curr[3:6]])
 
 
 def load_intrinsics(path: Path | str | None = None) -> np.ndarray:
@@ -130,7 +84,6 @@ def pixel_to_ref_point(
 
 
 __all__ = [
-    "point2pos",
     "load_intrinsics",
     "load_cam2ref",
     "depth_to_meters",

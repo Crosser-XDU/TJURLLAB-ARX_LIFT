@@ -78,14 +78,12 @@ def main():
     parser = argparse.ArgumentParser(description="打点实现基坐标系下的 3D 点获取以及机械臂控制")
     parser.add_argument("--debug", action="store_true",
                         help="启用调试模式,手动打点不执行机械臂动作，输出转换后的xyz坐标")
-    parser.add_argument(
-        "--manual", action="store_true", help="手动打点后执行机械臂动作")
     parser.add_argument("--predict", action="store_true",
                         help="使用ER1.5预测像素点")
     args = parser.parse_args()
 
-    if not (args.manual or args.debug or args.predict):
-        print("未指定模式，请添加参数：--manual / --debug / --predict")
+    if not (args.debug or args.predict):
+        print("未指定模式，请添加参数：--debug / --predict")
         return
 
     arx = ARXRobotEnv(duration_per_step=1.0/20.0,  # 就是插值里一步的时间，20Hz也就是0.05s
@@ -99,13 +97,12 @@ def main():
     time.sleep(1.5)  # 等待环境初始化完成
     arx.reset()
     arx.step_lift(15.0)
-    if args.manual or args.debug:
+    if args.debug:
         window_node = FrameBuffer()
         K = load_intrinsics()
         T_cam2ref = load_cam2ref()
 
         clicked: Optional[Tuple[int, int]] = None
-        last_pt_ref: Optional[np.ndarray] = None
 
         def on_mouse(event, x, y, flags, param):
             nonlocal clicked
@@ -135,31 +132,20 @@ def main():
                     break
 
                 if clicked is not None:
+                    pt_ref: Optional[np.ndarray] = None
                     try:
                         pt_ref = pixel_to_ref_point(
                             clicked, depth, K, T_cam2ref)
-                        last_pt_ref = pt_ref
                     except Exception as exc:
                         print(f"计算失败: {exc}")
-                    if args.manual:
-                        print(
-                            f"点击 {clicked} -> 基坐标系 3D 点: {pt_ref.tolist()},1s后执行动作")
-                        arx.step(make_pick_move_action(pt_ref))
-                        arx.step(make_pick_robust_action(pt_ref))
-                        arx.step(make_close_action(pt_ref))
-                        print("夹爪动作执行完毕")
-                    else:
+                    if pt_ref is not None:
                         print(
                             f"点击 {clicked} -> 基坐标系 3D 点: {pt_ref.tolist()}")
                     clicked = None
         finally:
-            if args.manual:
-                if last_pt_ref is not None:
-                    arx.step(make_pick_back_action(last_pt_ref))
-                    arx.step(make_release_action(last_pt_ref))
-        arx._go_to_initial_pose()
-        window_node.destroy_node()
-        cv2.destroyAllWindows()
+            arx._go_to_initial_pose()
+            window_node.destroy_node()
+            cv2.destroyAllWindows()
 
         arx.close()
     elif args.predict:
