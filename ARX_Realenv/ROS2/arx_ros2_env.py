@@ -229,7 +229,7 @@ class ARXRobotEnv():
 
     def _get_observation(self) -> Dict[str, np.ndarray]:
         """Fetch latest status/camera and pack into observation."""
-        time.sleep(0.05)  # allow status/camera to refresh
+        # time.sleep(0.05)  # allow status/camera to refresh
         camera_all, status_all = self.node.get_camera(
             save_dir=self.dir, target_size=self.img_size, return_status=True)
         obs = build_observation(camera_all, status_all)
@@ -294,8 +294,8 @@ class ARXRobotEnv():
 
 def main():
     arx = ARXRobotEnv(duration_per_step=1.0/20.0,
-                      min_steps_per_action=20,
-                      min_steps_gripper=10,
+                      min_steps_per_action=60,
+                      min_steps_gripper=20,
 
                       max_v_xyz=0.1,
                       max_v_rpy=0.1,
@@ -317,18 +317,18 @@ def main():
 
     actions = []
     x = 0.00
-    for i in range(3):
+    for i in range(2):
         x += 0.05
         if i % 2 == 0:
             g = -3.4
         else:
             g = 0.0
         actions.append({
-            "left": np.array([0, 0, x, 0, 0, 0, g], dtype=np.float32),
-            "right": np.array([0, 0, x, 0, 0, 0, g], dtype=np.float32),
+            "left": np.array([x, 0, 0, 0, 0, 0, g], dtype=np.float32),
+            "right": np.array([x, 0, 0, 0, 0, 0, g], dtype=np.float32),
         })
 
-    for i in range(3):
+    for i in range(2):
         obs, _, _, _ = arx.step(actions[i])
         arx.step_lift(10.0 - (i+1) * 2.0)
     arx.step_base(0.5, 0.0, 0.0, 1)

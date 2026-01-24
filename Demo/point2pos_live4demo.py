@@ -24,7 +24,7 @@ import cv2
 from typing import Optional, Tuple
 import threading
 import argparse
-from pick_place_motion import *
+from pick_place_straw_motion import *
 from point2pos_utils import (
     load_intrinsics,
     load_cam2ref,
@@ -87,8 +87,8 @@ def main():
         return
 
     arx = ARXRobotEnv(duration_per_step=1.0/20.0,  # 就是插值里一步的时间，20Hz也就是0.05s
-                      min_steps_per_action=40,  # 每个动作至少插值20步，理论上来说越大越好
-                      min_steps_gripper=20,  # 夹爪插值步数最少10步
+                      min_steps_per_action=60,  # 每个动作至少插值60步，理论上来说越大越好
+                      min_steps_gripper=20,  # 夹爪插值步数最少20步
                       max_v_xyz=0.1,
                       max_v_rpy=0.1,
                       camera_type="all",
@@ -96,7 +96,7 @@ def main():
                       img_size=(640, 480))
     time.sleep(1.5)  # 等待环境初始化完成
     arx.reset()
-    arx.step_lift(15.0)
+    arx.step_lift(17.0)
     if args.debug:
         window_node = FrameBuffer()
         K = load_intrinsics()
@@ -116,36 +116,28 @@ def main():
         cv2.namedWindow(win, cv2.WINDOW_NORMAL)
         cv2.setMouseCallback(win, on_mouse)
 
-        try:
-            while rclpy.ok():
-                rclpy.spin_once(window_node, timeout_sec=0.01)
-                color, depth = window_node.get_frames()
-                if color is None or depth is None:
-                    cv2.waitKey(1)
-                    continue
-                disp = color.copy()
-                if clicked is not None:
-                    cv2.circle(disp, clicked, 5, (0, 0, 255), -1)
-                cv2.imshow(win, disp)
-                key = cv2.waitKey(1) & 0xFF
-                if key in (27, ord("q")):  # ESC or q to quit
-                    break
+        while rclpy.ok():
+            rclpy.spin_once(window_node, timeout_sec=0.01)
+            color, depth = window_node.get_frames()
+            if color is None or depth is None:
+                cv2.waitKey(1)
+                continue
+            disp = color.copy()
+            if clicked is not None:
+                cv2.circle(disp, clicked, 5, (0, 0, 255), -1)
+            cv2.imshow(win, disp)
+            key = cv2.waitKey(1) & 0xFF
+            if key in (27, ord("q")):  # ESC or q to quit
+                break
 
-                if clicked is not None:
-                    pt_ref: Optional[np.ndarray] = None
-                    try:
-                        pt_ref = pixel_to_ref_point(
-                            clicked, depth, K, T_cam2ref)
-                    except Exception as exc:
-                        print(f"计算失败: {exc}")
-                    if pt_ref is not None:
-                        print(
-                            f"点击 {clicked} -> 基坐标系 3D 点: {pt_ref.tolist()}")
-                    clicked = None
-        finally:
-            arx._go_to_initial_pose()
-            window_node.destroy_node()
-            cv2.destroyAllWindows()
+            if clicked is not None:
+                pt_ref: Optional[np.ndarray] = pixel_to_ref_point(
+                    clicked, depth, K, T_cam2ref)
+                print(f"点击 {clicked} -> 基坐标系 3D 点: {pt_ref.tolist()}")
+                clicked = None
+        arx._go_to_initial_pose()
+        window_node.destroy_node()
+        cv2.destroyAllWindows()
 
         arx.close()
     elif args.predict:
@@ -155,6 +147,8 @@ def main():
         pt_ref = None
         predicted_px = None
         executed = False
+        pick_prompt = "The top part of the red straw in the cup"
+        place_prompt = "the center of the opening cup's top"
         try:
             win = "point2pos_predict"
             cv2.namedWindow(win, cv2.WINDOW_NORMAL)
@@ -171,20 +165,21 @@ def main():
 
                 if predicted_px is None:
                     if i % 2 == 0:
+                        prompt = pick_prompt
                         u, v = predict_point_from_rgb(
                             color,
-                            text_prompt=" a proper place to grasp the red straw in the cup with a gripper",
+                            text_prompt=prompt,
                         )
                     else:
-                        time.sleep(3)
                         # 取最新帧再做place预测，避免显示停滞
                         color, depth = window_node.get_frames()
                         if color is None or depth is None:
                             cv2.waitKey(1)
                             continue
+                        prompt = place_prompt
                         u, v = predict_point_from_rgb(
                             color,
-                            text_prompt="the opening of the cup ",
+                            text_prompt=prompt,
                         )
                     predicted_px = (int(round(u)), int(round(v)))
                     raw_depth = depth[predicted_px[1], predicted_px[0]]
@@ -195,40 +190,41 @@ def main():
                         pt_ref = None
                         executed = False
                         continue
-                    try:
-                        pt_ref = pixel_to_ref_point(
-                            predicted_px, depth, K, T_cam2ref)
-                        executed = False
-                        print(
-                            f"预测像素 {predicted_px} -> 基坐标系 3D 点: {pt_ref.tolist()}，按 e 执行抓取，q/ESC 退出")
-                    except Exception as exc:
-                        print(f"深度无效或转换失败: {exc}，按 r 重新预测")
-                        predicted_px = None
-                        pt_ref = None
-                        executed = False
+                    pt_ref = pixel_to_ref_point(
+                        predicted_px, depth, K, T_cam2ref)
+                    executed = False
+                    print(
+                        f"预测像素 {predicted_px} -> 基坐标系 3D 点: {pt_ref.tolist()}，按 e 执行抓取，q/ESC 退出")
 
                 disp = color.copy()
                 if predicted_px is not None:
                     cv2.circle(disp, predicted_px, 5, (0, 0, 255), -1)
+                curr_prompt = pick_prompt if i % 2 == 0 else place_prompt
+                cv2.putText(disp, f"prompt: {curr_prompt}", (10, 25),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2, cv2.LINE_AA)
                 cv2.imshow(win, disp)
                 key = cv2.waitKey(1) & 0xFF
                 # r 键刷新预测
                 if key == ord("r"):
                     predicted_px = None
                     continue
+                if key == ord("p"):
+                    new_p = input("输入新的 prompt (留空保持当前): ").strip()
+                    if new_p:
+                        if i % 2 == 0:
+                            pick_prompt = new_p
+                        else:
+                            place_prompt = new_p
+                    predicted_px = None
+                    pt_ref = None
+                    executed = False
+                    continue
                 if key == ord("e") and pt_ref is not None and not executed:
-                    if i % 2 == 0:
-                        arx.step(make_pick_move_action(pt_ref))
-                        arx.step(make_pick_robust_action(pt_ref))
-                        arx.step(make_close_action(pt_ref))
-                        arx.step(make_pick_stop_action(pt_ref))
-                        arx.step(make_pick_back_action(pt_ref))
-                    else:
-                        arx.step(make_place_move_action(pt_ref))
-                        arx.step(make_place_robust_action(pt_ref))
-                        arx.step(make_down_action(pt_ref))
-                        arx.step(make_open_action(pt_ref))
-                        arx.step(make_place_stop_action(pt_ref))
+                    seq = build_pick_straw_sequence(
+                        pt_ref) if i % 2 == 0 else build_place_straw_sequence(pt_ref)
+                    for act in seq:
+                        arx.step(act)
+                    if i % 2 == 1:
                         arx._go_to_initial_pose()
                     # 清空预测以便下一次循环重新打点，并切换模式
                     predicted_px = None
@@ -239,7 +235,6 @@ def main():
         finally:
             window_node.destroy_node()
             cv2.destroyAllWindows()
-
             arx.close()
 
 

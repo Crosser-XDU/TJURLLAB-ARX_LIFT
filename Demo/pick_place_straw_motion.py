@@ -4,9 +4,7 @@ from typing import Dict, Optional
 CLOSE = 0.0
 OPEN = -3.4
 GRIPPER_OFFSET = 0.15
-Gripper = -2.6
-Z_CUP = 0.06
-Z_STRAW = 0.2
+Z_STRAW = 0.25
 
 
 def make_pick_move_action(pt_ref: Optional[np.ndarray]) -> Dict[str, np.ndarray]:
@@ -27,7 +25,7 @@ def make_pick_robust_action(pt_ref: Optional[np.ndarray]) -> Dict[str, np.ndarra
     return {
         "left": np.array([0, 0, 0, 0, 0, 0, 0], dtype=np.float32),
         "right": np.array(
-            [base[0] - GRIPPER_OFFSET+0.02, base[1], base[2], 0, 0, 0, OPEN],
+            [base[0] - GRIPPER_OFFSET+0.03, base[1], base[2], 0, 0, 0, OPEN],
             dtype=np.float32,
         ),
     }
@@ -39,7 +37,7 @@ def make_close_action(pt_ref: Optional[np.ndarray]) -> Dict[str, np.ndarray]:
     return {
         "left": np.array([0, 0, 0, 0, 0, 0, 0], dtype=np.float32),
         "right": np.array(
-            [base[0]-GRIPPER_OFFSET+0.02, base[1], base[2], 0, 0, 0, CLOSE],
+            [base[0]-GRIPPER_OFFSET+0.03, base[1], base[2], 0, 0, 0, CLOSE],
             dtype=np.float32,
         ),
     }
@@ -51,7 +49,7 @@ def make_pick_stop_action(pt_ref: Optional[np.ndarray]) -> Dict[str, np.ndarray]
     return {
         "left": np.array([0, 0, 0, 0, 0, 0, 0], dtype=np.float32),
         "right": np.array(
-            [base[0] - GRIPPER_OFFSET+0.02, base[1],
+            [base[0] - GRIPPER_OFFSET+0.03, base[1],
                 base[2] + Z_STRAW, 0, 0, 0, CLOSE],
             dtype=np.float32,
         ),
@@ -71,7 +69,8 @@ def make_place_move_action(pt_ref: Optional[np.ndarray]) -> Dict[str, np.ndarray
     return {
         "left": np.array([0, 0, 0, 0, 0, 0, 0], dtype=np.float32),
         "right": np.array(
-            [base[0] - GRIPPER_OFFSET-0.04, base[1], base[2]+Z_STRAW, 0, 0, 0, CLOSE],
+            [base[0] - GRIPPER_OFFSET, base[1],
+                base[2]+Z_STRAW, 0, 0, 0, CLOSE],
             dtype=np.float32,
         ),
     }
@@ -83,7 +82,8 @@ def make_place_robust_action(pt_ref: Optional[np.ndarray]) -> Dict[str, np.ndarr
     return {
         "left": np.array([0, 0, 0, 0, 0, 0, 0], dtype=np.float32),
         "right": np.array(
-            [base[0]-GRIPPER_OFFSET-0.06, base[1], base[2]+Z_STRAW, 0, 0, 0, CLOSE],
+            [base[0]-GRIPPER_OFFSET+0.01, base[1],
+                base[2]+Z_STRAW, 0, 0, 0, CLOSE],
             dtype=np.float32,
         ),
     }
@@ -95,7 +95,8 @@ def make_down_action(pt_ref: Optional[np.ndarray]) -> Dict[str, np.ndarray]:
     return {
         "left": np.array([0, 0, 0, 0, 0, 0, 0], dtype=np.float32),
         "right": np.array(
-            [base[0]-GRIPPER_OFFSET-0.06, base[1], base[2]+Z_STRAW-0.12, 0, 0, 0, CLOSE],
+            [base[0]-GRIPPER_OFFSET+0.01, base[1],
+                base[2]+Z_STRAW-0.1, 0, 0, 0, CLOSE],
             dtype=np.float32,
         ),
     }
@@ -106,7 +107,7 @@ def make_open_action(pt_ref: Optional[np.ndarray]) -> Dict[str, np.ndarray]:
     base = np.zeros(3, dtype=np.float32) if pt_ref is None else pt_ref
     return {
         "left": np.array([0, 0, 0, 0, 0, 0, 0], dtype=np.float32),
-        "right": np.array([base[0]-GRIPPER_OFFSET-0.06, base[1], base[2]+Z_STRAW-0.12, 0, 0, 0, OPEN], dtype=np.float32)}
+        "right": np.array([base[0]-GRIPPER_OFFSET+0.01, base[1], base[2]+Z_STRAW-0.1, 0, 0, 0, OPEN], dtype=np.float32)}
 
 
 def make_place_stop_action(pt_ref: Optional[np.ndarray]) -> Dict[str, np.ndarray]:
@@ -115,7 +116,8 @@ def make_place_stop_action(pt_ref: Optional[np.ndarray]) -> Dict[str, np.ndarray
     return {
         "left": np.array([0, 0, 0, 0, 0, 0, 0], dtype=np.float32),
         "right": np.array(
-            [base[0]-GRIPPER_OFFSET-0.06, base[1], base[2]+Z_STRAW, 0, 0, 0, OPEN],
+            [base[0]-GRIPPER_OFFSET+0.01, base[1],
+                base[2]+Z_STRAW-0.05, 0, 0, 0, OPEN],
             dtype=np.float32,
         ),
     }
@@ -127,3 +129,25 @@ def make_release_action(pt_ref: Optional[np.ndarray]) -> Dict[str, np.ndarray]:
     return {
         "left": np.array([0, 0, 0, 0, 0, 0, 0], dtype=np.float32),
         "right": np.array([0, 0, 0, 0, 0, 0, OPEN], dtype=np.float32)}
+
+
+def build_pick_straw_sequence(pt_ref: Optional[np.ndarray]):
+    """返回抓取动作序列（右臂），不执行。"""
+    return [
+        make_pick_move_action(pt_ref),
+        make_pick_robust_action(pt_ref),
+        make_close_action(pt_ref),
+        make_pick_stop_action(pt_ref),
+        make_pick_back_action(pt_ref),
+    ]
+
+
+def build_place_straw_sequence(pt_ref: Optional[np.ndarray]):
+    """返回放置动作序列（右臂），不执行。"""
+    return [
+        make_place_move_action(pt_ref),
+        make_place_robust_action(pt_ref),
+        make_down_action(pt_ref),
+        make_open_action(pt_ref),
+        make_place_stop_action(pt_ref),
+    ]
