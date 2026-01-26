@@ -1,6 +1,6 @@
 [submodule "ARX_X5"]
 	path = ARX_X5
-	url = https://github.com/ARXroboticsX/ARX_X5.git
+	url = git@github.com:xianzeYao/TJURLLAB-ARX_X5.git
 
 [submodule "ARX_all_in_one_readme"]
 	path = ARX_all_in_one_readme
