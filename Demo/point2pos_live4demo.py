@@ -95,9 +95,9 @@ def main():
                       camera_type="all",
                       camera_view=("camera_h",),
                       img_size=(640, 480))
-    time.sleep(1.5)  # 等待环境初始化完成
+    time.sleep(1.0)  # 等待环境初始化完成
     arx.reset()
-    arx.step_lift(17.0)
+    arx.step_lift(15.0)
     if args.debug:
         window_node = FrameBuffer()
         K = load_intrinsics()
@@ -148,8 +148,8 @@ def main():
         pt_ref = None
         predicted_px = None
         executed = False
-        pick_prompt = "The top part of the red straw in the cup"
-        place_prompt = "the center of the opening cup's top"
+        pick_prompt = "The nearest cup"
+        place_prompt = "the empty white pad"
         try:
             win = "point2pos_predict"
             cv2.namedWindow(win, cv2.WINDOW_NORMAL)
