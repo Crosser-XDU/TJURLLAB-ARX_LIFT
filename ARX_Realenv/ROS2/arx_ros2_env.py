@@ -139,7 +139,6 @@ class ARXRobotEnv():
             msg.mode1 = 1
             self.node.send_base_msg(msg)
         # stop
-        time.sleep(1)
         msg.chx = msg.chy = msg.chz = 0.0
         msg.mode1 = 2
         self.node.send_base_msg(msg)
