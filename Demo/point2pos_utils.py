@@ -16,7 +16,7 @@ import numpy as np
 WORKSPACE = Path(__file__).resolve().parent.parent
 DEFAULT_INTRINSICS = WORKSPACE / "ARX_Realenv/Tools/instrinsics_camerah.json"
 DEFAULT_EXTRINSICS = WORKSPACE / \
-    "ARX_Realenv/Tools/final_extrinsics_cam_h_right.json"
+    "ARX_Realenv/Tools/new_extrinsics_cam_h_left.json"
 
 
 def _depth_to_meters(raw_depth: float) -> float:

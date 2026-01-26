@@ -25,6 +25,7 @@ from typing import Optional, Tuple
 import threading
 import argparse
 from pick_place_straw_motion import *
+from pick_place_cup_motion import *
 from point2pos_utils import (
     load_intrinsics,
     load_cam2ref,
@@ -220,8 +221,8 @@ def main():
                     executed = False
                     continue
                 if key == ord("e") and pt_ref is not None and not executed:
-                    seq = build_pick_straw_sequence(
-                        pt_ref) if i % 2 == 0 else build_place_straw_sequence(pt_ref)
+                    seq = build_pick_cup_sequence(
+                        pt_ref) if i % 2 == 0 else build_place_cup_sequence(pt_ref)
                     for act in seq:
                         arx.step(act)
                     if i % 2 == 1:
