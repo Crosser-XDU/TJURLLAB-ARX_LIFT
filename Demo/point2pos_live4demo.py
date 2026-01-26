@@ -148,6 +148,7 @@ def main():
         pt_ref = None
         predicted_px = None
         executed = False
+        attachment_uvs = None
         pick_prompt = "The nearest cup"
         place_prompt = "the empty white pad"
         try:
@@ -171,6 +172,18 @@ def main():
                             color,
                             text_prompt=prompt,
                         )
+                        attachment_uvs = None
+                        predicted_px = (int(round(u)), int(round(v)))
+                        raw_depth = depth[predicted_px[1], predicted_px[0]]
+                        if np.isnan(raw_depth) or raw_depth == 0:
+                            print(
+                                f"预测像素 {predicted_px} 深度无效({raw_depth})，按 r 重新预测")
+                            predicted_px = None
+                            pt_ref = None
+                            executed = False
+                            continue
+                        pt_ref = pixel_to_ref_point(
+                            predicted_px, depth, K, T_cam2ref)
                     else:
                         # 取最新帧再做place预测，避免显示停滞
                         color, depth = window_node.get_frames()
@@ -178,21 +191,62 @@ def main():
                             cv2.waitKey(1)
                             continue
                         prompt = place_prompt
-                        u, v = predict_point_from_rgb(
-                            color,
-                            text_prompt=prompt,
-                        )
-                    predicted_px = (int(round(u)), int(round(v)))
-                    raw_depth = depth[predicted_px[1], predicted_px[0]]
-                    if np.isnan(raw_depth) or raw_depth == 0:
-                        print(
-                            f"预测像素 {predicted_px} 深度无效({raw_depth})，按 r 重新预测")
+                        if "attachement" in place_prompt.lower():
+                            prompts = [
+                                "the right and top attachment of the left cup",
+                                "the left and top attachemnt of the right cup",
+                            ]
+                            uv_list = []
+                            pt_refs = []
+                            invalid_depth = False
+                            for sub_prompt in prompts:
+                                sub_u, sub_v = predict_point_from_rgb(
+                                    color,
+                                    text_prompt=sub_prompt,
+                                )
+                                uv = (int(round(sub_u)), int(round(sub_v)))
+                                raw_depth = depth[uv[1], uv[0]]
+                                if np.isnan(raw_depth) or raw_depth == 0:
+                                    print(
+                                        f"预测像素 {uv} 深度无效({raw_depth})，按 r 重新预测")
+                                    invalid_depth = True
+                                    break
+                                uv_list.append(uv)
+                                pt_refs.append(pixel_to_ref_point(
+                                    uv, depth, K, T_cam2ref))
+                            if invalid_depth:
+                                predicted_px = None
+                                pt_ref = None
+                                executed = False
+                                attachment_uvs = None
+                                continue
+                            attachment_uvs = uv_list
+                            predicted_px = tuple(
+                                np.mean(np.array(uv_list), axis=0).round().astype(int))
+                            pt_ref = np.mean(np.array(pt_refs), axis=0)
+                        else:
+                            u, v = predict_point_from_rgb(
+                                color,
+                                text_prompt=prompt,
+                            )
+                            attachment_uvs = None
+                            predicted_px = (int(round(u)), int(round(v)))
+                            raw_depth = depth[predicted_px[1], predicted_px[0]]
+                            if np.isnan(raw_depth) or raw_depth == 0:
+                                print(
+                                    f"预测像素 {predicted_px} 深度无效({raw_depth})，按 r 重新预测")
+                                predicted_px = None
+                                pt_ref = None
+                                executed = False
+                                attachment_uvs = None
+                                continue
+                            pt_ref = pixel_to_ref_point(
+                                predicted_px, depth, K, T_cam2ref)
+                    if pt_ref is None:
                         predicted_px = None
-                        pt_ref = None
                         executed = False
+                        attachment_uvs = None
                         continue
-                    pt_ref = pixel_to_ref_point(
-                        predicted_px, depth, K, T_cam2ref)
                     executed = False
                     print(
                         f"预测像素 {predicted_px} -> 基坐标系 3D 点: {pt_ref.tolist()}，按 e 执行抓取，q/ESC 退出")
@@ -200,6 +254,9 @@ def main():
                 disp = color.copy()
                 if predicted_px is not None:
                     cv2.circle(disp, predicted_px, 5, (0, 0, 255), -1)
+                if attachment_uvs:
+                    for uv in attachment_uvs:
+                        cv2.circle(disp, uv, 5, (255, 0, 0), -1)
                 curr_prompt = pick_prompt if i % 2 == 0 else place_prompt
                 cv2.putText(disp, f"prompt: {curr_prompt}", (10, 25),
                             cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2, cv2.LINE_AA)
@@ -208,6 +265,7 @@ def main():
                 # r 键刷新预测
                 if key == ord("r"):
                     predicted_px = None
+                    attachment_uvs = None
                     continue
                 if key == ord("p"):
                     new_p = input("输入新的 prompt (留空保持当前): ").strip()
@@ -219,6 +277,7 @@ def main():
                     predicted_px = None
                     pt_ref = None
                     executed = False
+                    attachment_uvs = None
                     continue
                 if key == ord("e") and pt_ref is not None and not executed:
                     seq = build_pick_cup_sequence(
@@ -230,6 +289,7 @@ def main():
                     # 清空预测以便下一次循环重新打点，并切换模式
                     predicted_px = None
                     pt_ref = None
+                    attachment_uvs = None
                     i += 1
                 if key in (27, ord("q")):
                     break
