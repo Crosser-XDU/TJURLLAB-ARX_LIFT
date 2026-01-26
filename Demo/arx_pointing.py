@@ -170,4 +170,76 @@ def predict_point_from_rgb(
     return float(pt[0]), float(pt[1])
 
 
+def predict_multi_points_from_rgb(
+    image: np.ndarray,
+    text_prompt: str,
+    all_prompt: str = "",
+    base_url: str = "http://172.28.102.11:22002/v1",
+    model_name: str = "Embodied-R1.5-SFT-v1",
+    api_key: str = "EMPTY",
+    assume_bgr: bool = True,
+    norm_range: float = 1000.0,
+    temperature: float = 0.7,
+    top_p: float = 0.8,
+    seed: int = 3407,
+    max_tokens: int = 512,
+) -> List[Tuple[float, float]]:
+    """
+    发送单张图像到 vLLM/OpenAI 兼容接口，返回首个像素点坐标 (u, v)。
+
+    参数:
+        image: HxWx3 图像数组 (RGB 或 BGR)。
+        all
+        text_prompt: 描述目标的自然语言提示。
+        base_url/model_name/api_key: vLLM/OpenAI 兼容服务配置。
+        assume_bgr: True 表示输入为 BGR（OpenCV 常用）；False 表示已是 RGB。
+        norm_range: 如果模型输出在 [0, norm_range]，会按图像宽高缩放到像素坐标。
+    """
+    h, w = image.shape[:2]
+    data_uri = _image_to_data_uri(image, assume_bgr=assume_bgr)
+    if all_prompt:
+        prompt = all_prompt
+    else:
+        prompt = (
+            "Provide one or more points coordinate of objects region this sentence describes: "
+            f"{text_prompt}. "
+            'The answer should be presented in JSON format as follows: [{"point_2d": [x, y]}].'
+        )
+    messages: Sequence[Dict[str, Any]] = [{
+        "role": "user",
+        "content": [
+            {"type": "image_url", "image_url": {"url": data_uri}},
+            {"type": "text", "text": prompt},
+        ],
+    }]
+
+    client = OpenAI(base_url=base_url, api_key=api_key)
+    resp = client.chat.completions.create(
+        model=model_name,
+        messages=messages,
+        max_tokens=max_tokens,
+        temperature=temperature,
+        top_p=top_p,
+        seed=seed,
+    )
+    generated = resp.choices[0].message.content
+    points = omni_decode_points(generated)
+    if not points:
+        raise RuntimeError(f"未解析到坐标，模型输出: {generated}")
+
+    pt = []
+    i = 0
+    while (points[i]):
+        pt.append(np.array(points[i], dtype=np.float64).reshape(-1))
+        if pt.shape[0] < 2:
+            raise RuntimeError(f"坐标维度异常: {pt}")
+
+        if norm_range and np.max(np.abs(pt)) <= norm_range:
+            pt = pt / norm_range * np.array([w, h], dtype=np.float64)
+
+        pt[0] = float(np.clip(pt[0], 0, w - 1))
+        pt[1] = float(np.clip(pt[1], 0, h - 1))
+        i += 1
+    return pt
+
 __all__ = ["predict_point_from_rgb", "omni_decode_points"]
