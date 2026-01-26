@@ -1,4 +1,4 @@
-我想值#!/bin/bash 
+#!/bin/bash
 
 workspace=$(pwd)
 source ~/.bashrc
@@ -10,4 +10,3 @@ sleep 1
 
 # 右臂node拉起 
 gnome-terminal -t "arm_R" -x  bash -c "cd ${workspace}; cd .. ; cd ARX_X5/ROS2/X5_ws; source install/setup.bash && ros2 launch arx_x5_controller v2_single_arm_right.launch.py; exec bash;"
-

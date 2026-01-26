@@ -150,45 +150,34 @@ def main():
                             raise ValueError(f"深度无效: {raw} @ {px}")
                         state[ref_key] = pixel_to_ref_point(px, depth, K, T)
 
-                    # 首次按 e 时缓存当前帧对应的 ref 点
-                    try:
-                        _maybe_cache("left_pick", "left_pick_ref", T_left)
-                        _maybe_cache("left_place", "left_place_ref", T_left)
-                        _maybe_cache("right_pick", "right_pick_ref", T_right)
-                        _maybe_cache("right_place", "right_place_ref", T_right)
-                    except Exception as exc:
-                        print(f"缓存 ref 失败: {exc}")
-                        continue
+                    _maybe_cache("left_pick", "left_pick_ref", T_left)
+                    _maybe_cache("left_place", "left_place_ref", T_left)
+                    _maybe_cache("right_pick", "right_pick_ref", T_right)
+                    _maybe_cache("right_place", "right_place_ref", T_right)
 
                     if state["left_pick_ref"] is not None and state["left_place_ref"] is not None:
-                        try:
-                            lp_pick = state["left_pick_ref"]
-                            lp_place = state["left_place_ref"]
-                            for act in build_pick_cup_sequence(lp_pick):
-                                arx.step(act)
-                            for act in build_place_cup_sequence(lp_place):
-                                arx.step(act)
-                            arx._go_to_initial_pose()
-                            print(
-                                f"左臂执行完毕 pick={lp_pick.tolist()} place={lp_place.tolist()}")
-                        except Exception as exc:
-                            print(f"左臂执行失败: {exc}")
+                        lp_pick = state["left_pick_ref"]
+                        lp_place = state["left_place_ref"]
+                        for act in build_pick_cup_sequence(lp_pick):
+                            arx.step(act)
+                        for act in build_place_cup_sequence(lp_place):
+                            arx.step(act)
+                        arx._go_to_initial_pose()
+                        print(
+                            f"左臂执行完毕 pick={lp_pick.tolist()} place={lp_place.tolist()}")
                     else:
                         print("左臂缺少 pick/place 点，跳过。")
 
                     if state["right_pick_ref"] is not None and state["right_place_ref"] is not None:
-                        try:
-                            rp_pick = state["right_pick_ref"]
-                            rp_place = state["right_place_ref"]
-                            for act in build_pick_straw_sequence(rp_pick):
-                                arx.step(act)
-                            for act in build_place_straw_sequence(rp_place):
-                                arx.step(act)
-                            arx._go_to_initial_pose()
-                            print(
-                                f"右臂执行完毕 pick={rp_pick.tolist()} place={rp_place.tolist()}")
-                        except Exception as exc:
-                            print(f"右臂执行失败: {exc}")
+                        rp_pick = state["right_pick_ref"]
+                        rp_place = state["right_place_ref"]
+                        for act in build_pick_straw_sequence(rp_pick):
+                            arx.step(act)
+                        for act in build_place_straw_sequence(rp_place):
+                            arx.step(act)
+                        arx._go_to_initial_pose()
+                        print(
+                            f"右臂执行完毕 pick={rp_pick.tolist()} place={rp_place.tolist()}")
                     else:
                         print("右臂缺少 pick/place 点，跳过。")
         finally:
@@ -226,16 +215,12 @@ def main():
                             f"预测像素 {predicted_px} 深度无效({raw_depth})，按 r 重新预测")
                         predicted_px = None
                         continue
-                    try:
-                        left_ref = pixel_to_ref_point(
-                            predicted_px, depth, K, T_left)
-                        right_ref = pixel_to_ref_point(
-                            predicted_px, depth, K, T_right)
-                        print(
-                            f"预测像素 {predicted_px} -> 左臂 ref 3D: {left_ref.tolist()} | 右臂 ref 3D: {right_ref.tolist()}，按 r 重新预测，q/ESC 退出")
-                    except Exception as exc:
-                        print(f"深度无效或转换失败: {exc}，按 r 重新预测")
-                        predicted_px = None
+                    left_ref = pixel_to_ref_point(
+                        predicted_px, depth, K, T_left)
+                    right_ref = pixel_to_ref_point(
+                        predicted_px, depth, K, T_right)
+                    print(
+                        f"预测像素 {predicted_px} -> 左臂 ref 3D: {left_ref.tolist()} | 右臂 ref 3D: {right_ref.tolist()}，按 r 重新预测，q/ESC 退出")
 
                 disp_left = color.copy()
                 disp_right = color.copy()

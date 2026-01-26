@@ -245,7 +245,7 @@ def build_observation(camera_all: Dict[str, Image] | Dict, status_all: Dict[str,
     if isinstance(status_all, dict):
         lstatus = status_all.get("left")
         rstatus = status_all.get("right")
-        if lstatus is not None and rstatus is not None:
+        if lstatus is not None:
             obs["left_end_pos"] = np.array(lstatus.end_pos, dtype=np.float32)
             obs["left_joint_pos"] = np.array(
                 lstatus.joint_pos, dtype=np.float32)
@@ -253,6 +253,7 @@ def build_observation(camera_all: Dict[str, Image] | Dict, status_all: Dict[str,
                 lstatus.joint_cur, dtype=np.float32)
             obs["left_joint_vel"] = np.array(
                 lstatus.joint_vel, dtype=np.float32)
+        if rstatus is not None:
             obs["right_end_pos"] = np.array(rstatus.end_pos, dtype=np.float32)
             obs["right_joint_pos"] = np.array(
                 rstatus.joint_pos, dtype=np.float32)

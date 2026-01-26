@@ -25,7 +25,7 @@ def make_pick_robust_action(pt_ref: Optional[np.ndarray]) -> Dict[str, np.ndarra
     base = np.zeros(3, dtype=np.float32) if pt_ref is None else pt_ref
     return {
         "left": np.array(
-            [base[0] - GRIPPER_OFFSET + 0.03, base[1]+0.02, base[2], 0, 0, 0, OPEN],
+            [base[0] - GRIPPER_OFFSET + 0.05, base[1]+0.02, base[2], 0, 0, 0, OPEN],
             dtype=np.float32,
         ),
         "right": np.array([0, 0, 0, 0, 0, 0, 0], dtype=np.float32),
@@ -37,7 +37,7 @@ def make_close_action(pt_ref: Optional[np.ndarray]) -> Dict[str, np.ndarray]:
     base = np.zeros(3, dtype=np.float32) if pt_ref is None else pt_ref
     return {
         "left": np.array(
-            [base[0] - GRIPPER_OFFSET + 0.03, base[1]+0.02,
+            [base[0] - GRIPPER_OFFSET + 0.05, base[1]+0.02,
                 base[2], 0, 0, 0, GRIPPER_CUP],
             dtype=np.float32,
         ),
@@ -85,7 +85,7 @@ def make_place_robust_action(pt_ref: Optional[np.ndarray]) -> Dict[str, np.ndarr
     base = np.zeros(3, dtype=np.float32) if pt_ref is None else pt_ref
     return {
         "left": np.array(
-            [base[0] - GRIPPER_OFFSET + 0.01, base[1],
+            [base[0] - GRIPPER_OFFSET, base[1],
              base[2] + Z_CUP+0.05, 0, 0, 0, GRIPPER_CUP],
             dtype=np.float32,
         ),
@@ -98,8 +98,8 @@ def make_down_action(pt_ref: Optional[np.ndarray]) -> Dict[str, np.ndarray]:
     base = np.zeros(3, dtype=np.float32) if pt_ref is None else pt_ref
     return {
         "left": np.array(
-            [base[0] - GRIPPER_OFFSET + 0.01, base[1],
-             base[2] + Z_CUP, 0, 0, 0, GRIPPER_CUP],
+            [base[0] - GRIPPER_OFFSET, base[1],
+             base[2] + Z_CUP-0.02, 0, 0, 0, GRIPPER_CUP],
             dtype=np.float32,
         ),
         "right": np.array([0, 0, 0, 0, 0, 0, 0], dtype=np.float32),
@@ -111,7 +111,7 @@ def make_open_action(pt_ref: Optional[np.ndarray]) -> Dict[str, np.ndarray]:
     base = np.zeros(3, dtype=np.float32) if pt_ref is None else pt_ref
     return {
         "left": np.array(
-            [base[0] - GRIPPER_OFFSET + 0.01, base[1], base[2] + Z_CUP, 0, 0, 0, OPEN], dtype=np.float32),
+            [base[0] - GRIPPER_OFFSET, base[1], base[2] + Z_CUP-0.02, 0, 0, 0, OPEN], dtype=np.float32),
         "right": np.array([0, 0, 0, 0, 0, 0, 0], dtype=np.float32)}
 
 
