@@ -24,6 +24,7 @@ import cv2
 from typing import Optional, Tuple
 import threading
 import argparse
+import textwrap
 from pick_place_straw_motion import *
 from pick_place_cup_motion import *
 from point2pos_utils import (
@@ -97,7 +98,7 @@ def main():
                       img_size=(640, 480))
     time.sleep(1.0)  # 等待环境初始化完成
     arx.reset()
-    arx.step_lift(15.0)
+    arx.step_lift(14.0)
     if args.debug:
         window_node = FrameBuffer()
         K = load_intrinsics()
@@ -149,8 +150,8 @@ def main():
         predicted_px = None
         executed = False
         attachment_uvs = None
-        pick_prompt = "The nearest cup"
-        place_prompt = "the empty white pad"
+        pick_prompt = "A near cup whose base is not directly resting on a white round coaster"
+        place_prompt = "A small black dot located at the center of a white round coaster."
         try:
             win = "point2pos_predict"
             cv2.namedWindow(win, cv2.WINDOW_NORMAL)
@@ -191,7 +192,7 @@ def main():
                             cv2.waitKey(1)
                             continue
                         prompt = place_prompt
-                        if "attachement" in place_prompt.lower():
+                        if "attachment" in place_prompt.lower():
                             prompts = [
                                 "the right and top attachment of the left cup",
                                 "the left and top attachemnt of the right cup",
@@ -258,8 +259,11 @@ def main():
                     for uv in attachment_uvs:
                         cv2.circle(disp, uv, 5, (255, 0, 0), -1)
                 curr_prompt = pick_prompt if i % 2 == 0 else place_prompt
-                cv2.putText(disp, f"prompt: {curr_prompt}", (10, 25),
-                            cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2, cv2.LINE_AA)
+                prompt_lines = textwrap.wrap(
+                    f"prompt: {curr_prompt}", width=32)
+                for idx, line in enumerate(prompt_lines):
+                    cv2.putText(disp, line, (10, 25 + idx * 25),
+                                cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2, cv2.LINE_AA)
                 cv2.imshow(win, disp)
                 key = cv2.waitKey(1) & 0xFF
                 # r 键刷新预测
