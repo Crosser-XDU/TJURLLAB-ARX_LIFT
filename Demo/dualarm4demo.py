@@ -207,6 +207,7 @@ def main():
                     u, v = predict_point_from_rgb(
                         color,
                         text_prompt="choose a grasp point",
+                        assume_bgr=False,
                     )
                     predicted_px = (int(round(u)), int(round(v)))
                     raw_depth = depth[predicted_px[1], predicted_px[0]]
